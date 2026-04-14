@@ -25,9 +25,13 @@ class RayTests(g.unittest.TestCase):
             assert broken == 0
 
     def test_rps(self):
-        for use_embree in [True, False]:
+        for kwargs in [
+            {"use_embree": True, "use_warp": False},
+            {"use_embree": False, "use_warp": False},
+            {"use_warp": True, "use_embree": False},
+        ]:
             dimension = (10000, 3)
-            sphere = g.get_mesh("unit_sphere.STL", use_embree=use_embree)
+            sphere = g.get_mesh("unit_sphere.STL", **kwargs)
 
             ray_origins = g.random(dimension)
             ray_directions = g.np.tile([0, 0, 1], (dimension[0], 1))
@@ -47,15 +51,23 @@ class RayTests(g.unittest.TestCase):
 
             rps = dimension[0] / g.np.diff(tic)
 
-            g.log.info("Measured %s rays/second with embree %d", str(rps), use_embree)
+            g.log.info(
+                "Measured %s rays/second with engine %s",
+                str(rps),
+                type(sphere.ray).__module__,
+            )
 
     def test_empty(self):
         """
         Test queries with no hits
         """
-        for use_embree in [True, False]:
+        for kwargs in [
+            {"use_embree": True, "use_warp": False},
+            {"use_embree": False, "use_warp": False},
+            {"use_warp": True, "use_embree": False},
+        ]:
             dimension = (100, 3)
-            sphere = g.get_mesh("unit_sphere.STL", use_embree=use_embree)
+            sphere = g.get_mesh("unit_sphere.STL", **kwargs)
             # should never hit the sphere
             ray_origins = g.random(dimension)
             ray_directions = g.np.tile([0, 1, 0], (dimension[0], 1))
@@ -75,8 +87,12 @@ class RayTests(g.unittest.TestCase):
 
     def test_contains(self):
         scale = 1.5
-        for use_embree in [True, False]:
-            mesh = g.get_mesh("unit_cube.STL", use_embree=use_embree)
+        for kwargs in [
+            {"use_embree": True, "use_warp": False},
+            {"use_embree": False, "use_warp": False},
+            {"use_warp": True, "use_embree": False},
+        ]:
+            mesh = g.get_mesh("unit_cube.STL", **kwargs)
             g.log.info("Contains test ray engine: " + str(mesh.ray.__class__))
 
             test_on = mesh.ray.contains_points(mesh.vertices)  # NOQA
@@ -111,8 +127,12 @@ class RayTests(g.unittest.TestCase):
             assert (hit_count == 1).all()
 
     def test_on_edge(self):
-        for use_embree in [True, False]:
-            m = g.get_mesh("7_8ths_cube.stl", use_embree=use_embree)
+        for kwargs in [
+            {"use_embree": True, "use_warp": False},
+            {"use_embree": False, "use_warp": False},
+            {"use_warp": True, "use_embree": False},
+        ]:
+            m = g.get_mesh("7_8ths_cube.stl", **kwargs)
 
             points = [[4.5, 0, -23], [4.5, 0, -2], [0, 0, -1e-6], [0, 0, -1]]
             truth = [False, True, True, True]
@@ -140,9 +160,13 @@ class RayTests(g.unittest.TestCase):
         # Duplicate to ensure we have an camera_origin per ray direction
         ray_origins = g.np.tile(cam_t, (ray_directions.shape[0], 1))
 
-        for use_embree in [True, False]:
+        for kwargs in [
+            {"use_embree": True, "use_warp": False},
+            {"use_embree": False, "use_warp": False},
+            {"use_warp": True, "use_embree": False},
+        ]:
             # Generate a 1 x 1 x 1 cube using the trimesh box primitive
-            cube_mesh = g.trimesh.creation.box(extents=[2, 2, 2], use_embree=use_embree)
+            cube_mesh = g.trimesh.creation.box(extents=[2, 2, 2], **kwargs)
 
             # Perform 256 * 256 raycasts, one for each pixel on the image
             # plane. We only want the 'first' hit.
@@ -179,7 +203,11 @@ class RayTests(g.unittest.TestCase):
         ray origin XY.
         """
 
-        for kwargs in [{"use_embree": True}, {"use_embree": False}]:
+        for kwargs in [
+            {"use_embree": True, "use_warp": False},
+            {"use_embree": False, "use_warp": False},
+            {"use_warp": True, "use_embree": False},
+        ]:
             mesh = g.get_mesh("unit_cube.STL", **kwargs)
             # grid is across meshes XY profile
             origins = g.trimesh.util.grid_linspace(
@@ -215,7 +243,11 @@ class RayTests(g.unittest.TestCase):
                 [[-0.13590759, -0.98042506, 0.0], [0.13590759, 0.98042506, -0.0]]
             )
 
-            for kwargs in [{"use_embree": True}, {"use_embree": False}]:
+            for kwargs in [
+                {"use_embree": True, "use_warp": False},
+                {"use_embree": False, "use_warp": False},
+                {"use_warp": True, "use_embree": False},
+            ]:
                 mesh = g.get_mesh("broken.STL", **kwargs)
 
                 locations, _index_ray, _index_tri = mesh.ray.intersects_location(
@@ -224,6 +256,62 @@ class RayTests(g.unittest.TestCase):
 
                 # should be same number of location hits
                 assert len(locations) == len(ray_origins)
+
+    def test_warp_availability(self):
+        """Verify has_warp is a boolean and the module is loadable."""
+        assert isinstance(g.trimesh.ray.has_warp, bool)
+
+    def test_warp_fallback(self):
+        """Verify that disabling Warp falls through to embree or numpy."""
+        mesh = g.get_mesh("unit_sphere.STL", use_warp=False)
+        assert type(mesh.ray).__module__ != "trimesh.ray.ray_warp"
+
+    def test_use_embree_false_disables_warp_auto_selection(self):
+        """Legacy `use_embree=False` should still opt out of accelerated backends."""
+        mesh = g.trimesh.creation.box(use_embree=False)
+        assert type(mesh.ray).__module__ == "trimesh.ray.ray_triangle"
+
+    def test_use_embree_true_prefers_embree_when_warp_unspecified(self):
+        """`use_embree=True` should not silently switch to Warp."""
+        if not g.trimesh.ray.has_embree:
+            return
+        mesh = g.trimesh.creation.box(use_embree=True)
+        assert type(mesh.ray).__module__ == "trimesh.ray.ray_pyembree"
+
+    def test_warp_engine_selection(self):
+        """Verify explicit engine selection via constructor flags."""
+        if not g.trimesh.ray.has_warp:
+            return
+        mesh_warp = g.get_mesh("unit_sphere.STL", use_warp=True, use_embree=False)
+        assert type(mesh_warp.ray).__module__ == "trimesh.ray.ray_warp"
+
+        mesh_no_warp = g.get_mesh("unit_sphere.STL", use_warp=False, use_embree=False)
+        assert type(mesh_no_warp.ray).__module__ == "trimesh.ray.ray_triangle"
+
+    def test_trimesh_positional_visual_compatibility(self):
+        """Adding Warp should not shift positional args after `use_embree`."""
+        visual = g.trimesh.visual.ColorVisuals(
+            face_colors=[[255, 0, 0, 255]],
+        )
+        mesh = g.trimesh.Trimesh(
+            [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+            [[0, 1, 2]],
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            True,
+            False,
+            None,
+            None,
+            False,
+            None,
+            visual,
+        )
+        assert mesh.visual is visual
 
 
 if __name__ == "__main__":

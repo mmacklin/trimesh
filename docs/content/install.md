@@ -17,6 +17,11 @@ To install `trimesh` with the soft dependencies that generally install cleanly o
 pip install trimesh[easy]
 ```
 
+For the optional Warp backend:
+```
+pip install trimesh[warp]
+```
+
 
 ## What makes a dependency `easy`?
 
@@ -62,6 +67,7 @@ Trimesh has a lot of soft-required upstream packages, and we try to make sure th
 | `shapely` | Bindings to `GEOS` for 2D spatial stuff: "set-theoretic analysis and manipulation of planar features" which lets you offset, union, and query polygons. | `clipper` | `easy` | 
 | `rtree` | Query ND rectangles with a spatial tree for a "broad phase" intersection. Used in polygon generation ("given N closed curves which curve contains the other curve?") and as the broad-phase for the built-in-numpy slow ray query engine. |  | `easy` |
 |`httpx`| Do network queries in `trimesh.exchange.load_remote`, we will *only* make network requests when asked | `requests`, `aiohttp` | `easy`|
+|`warp-lang`| GPU-accelerated ray-mesh intersection and closest-point queries through the optional Warp backend. |  | `warp`|
 |`sympy`| Evaluate symbolic algebra | | `recommend`|
 |`xxhash`| Quickly hash arrays, used for our cache checking | | `easy`|
 |`charset-normalizer`| When we fail to decode text as UTF-8 we then check with charset-normalizer which guesses an encoding,  letting us load files even with weird encodings. | | `easy`|

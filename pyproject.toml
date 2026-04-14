@@ -123,6 +123,9 @@ test_more = [
     "marimo",   # different notebook stuff
 ]
 
+# optional Warp backend for ray and proximity queries
+warp = ["warp-lang"]
+
 # openctm will be fully removed sometime after June 2026
 # as it is unmaintained, wasn't used widely and was inflicting
 # a support burden on upstream package management

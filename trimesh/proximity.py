@@ -118,6 +118,16 @@ def closest_point_naive(mesh, points):
     return closest, distance, triangle_id
 
 
+def _has_warp_ray(mesh):
+    """Check whether *mesh* was constructed with ``use_warp=True``."""
+    from .ray import _load_ray_warp
+
+    _mod = _load_ray_warp()
+    if _mod is None:
+        return False
+    return isinstance(getattr(mesh, "ray", None), _mod.RayMeshIntersector)
+
+
 def closest_point(mesh, points):
     """
     Given a mesh and a list of points find the closest point
@@ -142,6 +152,10 @@ def closest_point(mesh, points):
     points = np.asanyarray(points, dtype=np.float64)
     if not util.is_shape(points, (-1, 3)):
         raise ValueError("points must be (n,3)!")
+
+    # dispatch to Warp backend if the mesh was created with use_warp=True
+    if _has_warp_ray(mesh):
+        return mesh.ray.closest_point(points)
 
     # do a tree- based query for faces near each point
     candidates = nearby_faces(mesh, points)

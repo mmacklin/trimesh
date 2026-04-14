@@ -117,6 +117,7 @@ class Trimesh(Geometry3D):
         use_embree: bool = True,
         initial_cache: Optional[Dict[str, ndarray]] = None,
         visual: Optional[Union[ColorVisuals, TextureVisuals]] = None,
+        use_warp: Optional[bool] = None,
         **kwargs,
     ) -> None:
         """
@@ -164,6 +165,10 @@ class Trimesh(Geometry3D):
           things were calculated before creating the mesh object.
         visual : ColorVisuals or TextureVisuals
           Assigned to self.visual
+        use_warp : bool or None
+          If True try to use the Warp raytracer.
+          If warp-lang is not available it will automatically fall
+          back to pyembree or the rtree/numpy implementation.
         """
 
         # self._data stores information about the mesh which
@@ -220,10 +225,12 @@ class Trimesh(Geometry3D):
         if vertex_normals is not None:
             self.vertex_normals = vertex_normals
 
+        # warp is a GPU-accelerated raytracer
         # embree is a much, much faster raytracer written by Intel
-        # if you have pyembree installed you should use it
-        # although both raytracers were designed to have a common API
-        if ray.has_embree and use_embree:
+        # all raytracers were designed to have a common API
+        if ray.has_warp and use_warp is True and ray._load_ray_warp() is not None:
+            self.ray = ray.ray_warp.RayMeshIntersector(self)
+        elif ray.has_embree and use_embree:
             self.ray = ray.ray_pyembree.RayMeshIntersector(self)
         else:
             # create a ray-mesh query object for the current mesh

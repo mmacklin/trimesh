@@ -26,6 +26,11 @@ To install `trimesh` with the soft dependencies that generally install cleanly f
 pip install trimesh[easy]
 ```
 
+For the optional Warp backend:
+```bash
+pip install trimesh[warp]
+```
+
 If you are supporting a different platform or are freezing dependencies for an application we recommend you do not use extras, i.e. depend on `trimesh scipy` versus `trimesh[easy]`. Further information is available in the [advanced installation documentation](https://trimesh.org/install.html).
 
 ## Quick Start
